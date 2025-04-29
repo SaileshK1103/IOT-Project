@@ -1,0 +1,63 @@
+import network
+from time import sleep
+from umqtt.simple import MQTTClient
+import ujson
+
+# Replace these values with your own
+SSID = "xxxx"
+PASSWORD = "xxxxxxxxx"
+BROKER_IP = "xxxx"
+message = {}
+
+# Function to connect to WLAN
+def connect_wlan():
+    # Connecting to the group WLAN
+    wlan = network.WLAN(network.STA_IF)
+    wlan.active(True)
+    wlan.connect(SSID, PASSWORD)
+
+    # Attempt to connect once per second
+    while wlan.isconnected() == False:
+        print("Connecting... ")
+        sleep(1)
+
+    # Print the IP address of the Pico
+    print("Connection successful. Pico IP:", wlan.ifconfig()[0])
+
+def connect_mqtt():
+    mqtt_client= MQTTClient("pico-client", BROKER_IP, 21883)
+    mqtt_client.connect(clean_session=True)
+    return mqtt_client
+
+# Main program
+if __name__ == "__main__":
+    #Connect to WLAN
+    connect_wlan()
+    
+    # Connect to MQTT
+    try:
+        mqtt_client=connect_mqtt()
+        
+    except Exception as e:
+        print(f"Failed to connect to MQTT: {e}")
+
+    # Send MQTT message
+    try:
+        while True:
+            # Sending a message every 5 seconds.
+            topic = "kubios-request"
+            
+            message = {"id": 123,
+                       "type": "RRI",
+                       "data": [828, 836, 852, 760, 800, 796, 856, 824, 808, 776, 724, 816,
+                                800, 812, 812,812, 756, 820, 812, 800],
+                       "analysis": {"type": "readiness"}
+                       }
+            json_message = ujson.dumps(message)
+            mqtt_client.publish(topic, json_message)
+            print(f"Sending to MQTT: {topic} -> {message}")
+            sleep(5)
+            
+    except Exception as e:
+        print(f"Failed to send MQTT message: {e}")
+
